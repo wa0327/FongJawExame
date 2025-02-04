@@ -1,17 +1,22 @@
-@model FongJawWeb.Models.LoginViewModel
+@model FongJawWeb.Models.CreateUserViewModel
 
 @{
-    ViewData["Title"] = "Login";
+    ViewData["Title"] = "Create User";
 }
 
-<div class="container justify-content-center">
-    <div class="row justify-content-center">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-body">
-                    <h2 class="card-title text-center">Login</h2>
-                    <form asp-action="Login" method="post">
-                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<div class="row justify-content-center">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-center">Create User</h2>
+                <form asp-action="Create" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    
+                    <div class="form-group mb-3">
+                        <label asp-for="Name" class="control-label"></label>
+                        <input asp-for="Name" class="form-control" />
+                        <span asp-validation-for="Name" class="text-danger"></span>
+                    </div>
                     
                     <div class="form-group mb-3">
                         <label asp-for="Email" class="control-label"></label>
@@ -26,8 +31,8 @@
                     </div>
                     
                     <div class="form-group text-center">
-                        <button type="submit" class="btn btn-primary">Login</button>
-                        <button type="button" asp-action="Create" class="btn btn-secondary">Create User</button>
+                        <button type="submit" class="btn btn-primary">Create</button>
+                        <a asp-action="Login" class="btn btn-secondary">Back to Login</a>
                     </div>
                 </form>
             </div>

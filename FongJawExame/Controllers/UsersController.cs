@@ -1,50 +1,24 @@
-﻿using FongJawExame.Data;
-using FongJawExame.Models;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using FongJawWeb.Models;
+using FongJawWeb.Data;
 
-namespace FongJawExame.Controllers
+namespace FongJawWeb.Controllers
 {
     public class UsersController : Controller
     {
-        private readonly IConfiguration _configuration;
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public UsersController(IConfiguration configuration, ApplicationDbContext context)
+        public UsersController(ApplicationDbContext context, IConfiguration configuration)
         {
-            _configuration = configuration;
             _context = context;
-        }
-
-        [Authorize]
-        public async Task<IActionResult> Index()
-        {
-            var users = await _context.Users.ToListAsync();
-            return View(users);
-        }
-
-        public IActionResult New()
-        {
-            return View();
-        }
-
-        [HttpPost]
-        public IActionResult Register(UserModel user)
-        {
-            if (ModelState.IsValid)
-            {
-                user.PasswordHash = HashHelper.ComputeSha256Hash(user.Password);
-                user.Password = null;
-                _context.Add(user);
-                _context.SaveChanges();
-                return RedirectToAction("Index", "Home");
-            }
-            return View("New", user);
+            _configuration = configuration;
         }
 
         public IActionResult Login()
@@ -53,32 +27,86 @@ namespace FongJawExame.Controllers
         }
 
         [HttpPost]
-        public IActionResult Authenticate(UserModel login)
+        public async Task<IActionResult> Login(LoginViewModel model)
         {
-            var hash = HashHelper.ComputeSha256Hash(login.Password);
-            var query = from u in _context.Users
-                        where u.Email == login.Email && u.PasswordHash == hash
-                        select u;
-            var user = query.FirstOrDefault();
+            if (!ModelState.IsValid)
+                return View(model);
 
-            if (user == null)
-                return Unauthorized();
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]);
-            var tokenDescriptor = new SecurityTokenDescriptor
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == model.Email);
+            if (user == null || !BCrypt.Net.BCrypt.Verify(model.Password, user.PasswordHash))
             {
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim(ClaimTypes.Name, user.Id.ToString())
-                }),
-                Expires = DateTime.UtcNow.AddHours(1),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            var tokenString = tokenHandler.WriteToken(token);
+                ModelState.AddModelError("", "Invalid email or password");
+                return View(model);
+            }
 
-            return Ok(new { Token = tokenString });
+            var token = GenerateJwtToken(user);
+            Response.Cookies.Append("JwtToken", token, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict
+            });
+
+            return RedirectToAction("Index", "Home");
+        }
+
+        public IActionResult Register()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> Register(CreateUserViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return View(model);
+
+            if (await _context.Users.AnyAsync(u => u.Email == model.Email))
+            {
+                ModelState.AddModelError("Email", "Email already exists");
+                return View(model);
+            }
+
+            var user = new User
+            {
+                Name = model.Name,
+                Email = model.Email,
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(model.Password)
+            };
+
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            return RedirectToAction(nameof(Login));
+        }
+
+        public IActionResult Logout()
+        {
+            Response.Cookies.Delete("JwtToken");
+            return RedirectToAction("Login");
+        }
+
+        private string GenerateJwtToken(User user)
+        {
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["Jwt:Issuer"],
+                audience: _configuration["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddHours(1),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

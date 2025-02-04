@@ -1,37 +1,58 @@
-using System.Diagnostics;
-using FongJawExame.Models;
+using FongJawWeb.Data;
+using FongJawWeb.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
+using System.IdentityModel.Tokens.Jwt;
 
-namespace FongJawExame.Controllers
+namespace FongJawWeb.Controllers;
+
+public class HomeController : Controller
 {
-    public class HomeController : Controller
+    private readonly ApplicationDbContext _context;
+
+    public HomeController(ApplicationDbContext context)
     {
-        private readonly ILogger<HomeController> _logger;
+        _context = context;
+    }
 
-        public HomeController(ILogger<HomeController> logger)
+    public async Task<IActionResult> Index()
+    {
+        var token = Request.Cookies["JwtToken"];
+        if (token == null)
         {
-            _logger = logger;
+            return RedirectToAction("Login", "Users");
         }
 
-        public IActionResult Index()
+        var handler = new JwtSecurityTokenHandler();
+        var jsonToken = handler.ReadToken(token) as JwtSecurityToken;
+        var userIdClaim = jsonToken.Claims.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Sub);
+        var emailClaim = jsonToken.Claims.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Email);
+
+        if (userIdClaim == null || emailClaim == null)
         {
-            return View();
+            return RedirectToAction("Login", "Users");
         }
 
-        public IActionResult Privacy()
+        var userId = int.Parse(userIdClaim.Value);
+        var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (currentUser == null)
         {
-            return View();
+            return RedirectToAction("Login", "Users");
         }
 
-        public IActionResult ErrorTrial()
-        {
-            throw new Exception("¼ÒÀÀ¿ù»~°T®§¡C");
-        }
+        return View(currentUser);
+    }
 
-        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-        public IActionResult Error()
-        {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
-        }
+    public IActionResult Privacy()
+    {
+        return View();
+    }
+
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult Error()
+    {
+        return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
     }
 }

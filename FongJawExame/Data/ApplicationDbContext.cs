@@ -1,16 +1,15 @@
-using FongJawExame.Models;
 using Microsoft.EntityFrameworkCore;
+using FongJawWeb.Models;
 
-   namespace FongJawExame.Data
-   {
-       public class ApplicationDbContext : DbContext
-       {
-           public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-               : base(options)
-           {
-           }
+namespace FongJawWeb.Data
+{
+    public class ApplicationDbContext : DbContext
+    {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+            : base(options)
+        {
+        }
 
-           public DbSet<UserModel> Users { get; set; }
-       }
-   }
-   
+        public DbSet<User> Users { get; set; }
+    }
+}
