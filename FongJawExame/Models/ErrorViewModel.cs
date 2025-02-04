@@ -1,4 +1,4 @@
-namespace FongJawWeb.Models;
+namespace FongJawExame.Models;
 
 public class ErrorViewModel
 {

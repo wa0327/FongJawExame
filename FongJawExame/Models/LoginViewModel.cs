@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace FongJawWeb.Models
+namespace FongJawExame.Models
 {
     public class LoginViewModel
     {

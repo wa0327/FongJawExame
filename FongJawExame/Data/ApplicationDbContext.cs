@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using FongJawWeb.Models;
+using FongJawExame.Models;
 
-namespace FongJawWeb.Data
+namespace FongJawExame.Data
 {
     public class ApplicationDbContext : DbContext
     {

@@ -5,10 +5,10 @@ using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using FongJawWeb.Models;
-using FongJawWeb.Data;
+using FongJawExame.Models;
+using FongJawExame.Data;
 
-namespace FongJawWeb.Controllers
+namespace FongJawExame.Controllers
 {
     public class UsersController : Controller
     {
@@ -47,7 +47,7 @@ namespace FongJawWeb.Controllers
                 SameSite = SameSiteMode.Strict
             });
 
-            return RedirectToAction("Index", "Home");
+            return RedirectToAction("Profile");
         }
 
         public IActionResult Register()
@@ -56,7 +56,7 @@ namespace FongJawWeb.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Register(CreateUserViewModel model)
+        public async Task<IActionResult> Register(RegisterUserViewModel model)
         {
             if (!ModelState.IsValid)
                 return View(model);
@@ -77,13 +77,42 @@ namespace FongJawWeb.Controllers
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return RedirectToAction(nameof(Login));
+            return RedirectToAction("Index", "Home");
         }
 
         public IActionResult Logout()
         {
             Response.Cookies.Delete("JwtToken");
             return RedirectToAction("Login");
+        }
+
+        public async Task<IActionResult> Profile()
+        {
+            var token = Request.Cookies["JwtToken"];
+            if (token == null)
+            {
+                return Unauthorized();
+            }
+
+            var handler = new JwtSecurityTokenHandler();
+            var jsonToken = (JwtSecurityToken)handler.ReadToken(token);
+            var userIdClaim = jsonToken.Claims.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Sub);
+            var emailClaim = jsonToken.Claims.FirstOrDefault(claim => claim.Type == JwtRegisteredClaimNames.Email);
+
+            if (userIdClaim == null || emailClaim == null)
+            {
+                return Unauthorized();
+            }
+
+            var userId = int.Parse(userIdClaim.Value);
+            var currentUser = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (currentUser == null)
+            {
+                return Unauthorized();
+            }
+
+            return View(currentUser);
         }
 
         private string GenerateJwtToken(User user)

@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace FongJawWeb.Models
+namespace FongJawExame.Models
 {
     public class User
     {
@@ -10,7 +10,7 @@ namespace FongJawWeb.Models
         public int Id { get; set; }
         
         [Required]
-        [MaxLength(10)]
+        [MaxLength(100)]
         public string Name { get; set; }
         
         [Required]
